@@ -233,6 +233,7 @@ namespace hw {
     #define INS_CLOSE_TX                        0x80
 
     #define INS_GET_TX_PROOF                    0xA0
+    #define INS_DECRYPT_TX_KEY                  0xA2
 
     #define INS_GET_RESPONSE                    0xc0
 
@@ -1242,6 +1243,41 @@ namespace hw {
     /* ======================================================================= */
     /*                               TRANSACTION                               */
     /* ======================================================================= */
+    bool device_ledger::decrypt_tx_key(const crypto::hash &txid, crypto::secret_key &tx_key, std::vector<crypto::secret_key> &additional_tx_keys) {
+      AUTO_LOCK_CMD();
+      int offset;
+
+      CHECK_AND_ASSERT_THROW_MES(this->tx_in_progress == false, "TX key decryption not allowed during transaction.");
+
+      //decrypt main key
+      offset = set_command_header_noopt(INS_DECRYPT_TX_KEY);
+
+      memmove(&this->buffer_send[offset], tx_key.data, 32);
+      offset += 32;
+
+      this->buffer_send[4] = offset-5;
+      this->length_send = offset;
+      CHECK_AND_ASSERT_THROW_MES(this->exchange_wait_on_input() == 0, "TX key decryption denied.");
+
+      memmove(tx_key.data, &this->buffer_recv[0],  32);
+
+
+      //decrypt addition keys
+      for (int cnt = 0; cnt< additional_tx_keys.size(); cnt++) {       
+        offset  = set_command_header_noopt(INS_DECRYPT_TX_KEY,cnt+1);
+
+        memmove(&this->buffer_send[offset], additional_tx_keys[cnt].data, 32);
+        offset += 32;
+
+        this->buffer_send[4] = offset-5;
+        this->length_send = offset;
+        CHECK_AND_ASSERT_THROW_MES(this->exchange_wait_on_input() == 0, "TX key decryption denied.");
+
+        memmove(additional_tx_keys[cnt].data, &this->buffer_recv[0],  32);
+      }
+
+      return true;
+    }
 
     void device_ledger::generate_tx_proof(const crypto::hash &prefix_hash, 
                                           const crypto::public_key &R, const crypto::public_key &A, const boost::optional<crypto::public_key> &B, const crypto::public_key &D, const crypto::secret_key &r, 
@@ -1266,6 +1302,7 @@ namespace hw {
       log_hexbuffer("generate_tx_proof: [[IN]]  D ", D_x.data, 32);
       log_hexbuffer("generate_tx_proof: [[IN]]  r ", r_x.data, 32);       
       #endif
+
 
          
       int offset = set_command_header(INS_GET_TX_PROOF);
