@@ -43,9 +43,9 @@ namespace hw {
     namespace ledger {
 
     /* Minimal supported version */
-    #define MINIMAL_APP_VERSION_MAJOR    1
-    #define MINIMAL_APP_VERSION_MINOR    3
-    #define MINIMAL_APP_VERSION_MICRO    1
+    #define MINIMAL_APP_VERSION_MAJOR    0
+    #define MINIMAL_APP_VERSION_MINOR    254
+    #define MINIMAL_APP_VERSION_MICRO    0
 
     #define VERSION(M,m,u)       ((M)<<16|(m)<<8|(u))
     #define VERSION_MAJOR(v)     (((v)>>16)&0xFF)
